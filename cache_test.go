@@ -9,6 +9,7 @@ package cache2go
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"strconv"
 	"sync"
@@ -470,5 +471,32 @@ func TestLogger(t *testing.T) {
 	// verify the logger has been used
 	if out.Len() == 0 {
 		t.Error("Logger is empty")
+	}
+}
+
+func Test1s(t *testing.T) {
+	// setup a logger
+	table := Cache("1s")
+	item := table.Add("1", time.Millisecond*600, 1)
+	fmt.Println(item.AccessedOn())
+	time.Sleep(time.Millisecond * 300)
+	item, _ = table.Value("1")
+	fmt.Println(item.AccessedOn())
+
+	time.Sleep(time.Millisecond * 400)
+	item, err := table.Value("1")
+	fmt.Println(item.AccessedOn())
+
+	if err != nil {
+		t.Error(" err should be nil")
+	}
+	if item == nil {
+		t.Error("v is not null")
+	}
+	time.Sleep(time.Millisecond * 700)
+
+	item, err = table.Value("1")
+	if err == nil || item != nil {
+		t.Error(" err should be not nil")
 	}
 }

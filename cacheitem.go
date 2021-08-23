@@ -9,6 +9,7 @@ package cache2go
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -27,7 +28,7 @@ type CacheItem struct {
 	// Creation timestamp.
 	createdOn time.Time
 	// Last access timestamp.
-	accessedOn time.Time
+	accessedOn int64
 	// How often the item was accessed.
 	accessCount int64
 
@@ -46,7 +47,7 @@ func NewCacheItem(key interface{}, lifeSpan time.Duration, data interface{}) *Ca
 		key:           key,
 		lifeSpan:      lifeSpan,
 		createdOn:     t,
-		accessedOn:    t,
+		accessedOn:    t.UnixNano(),
 		accessCount:   0,
 		aboutToExpire: nil,
 		data:          data,
@@ -55,10 +56,8 @@ func NewCacheItem(key interface{}, lifeSpan time.Duration, data interface{}) *Ca
 
 // KeepAlive marks an item to be kept for another expireDuration period.
 func (item *CacheItem) KeepAlive() {
-	item.Lock()
-	defer item.Unlock()
-	item.accessedOn = time.Now()
-	item.accessCount++
+	atomic.StoreInt64(&item.accessedOn, time.Now().UnixNano())
+	atomic.AddInt64(&item.accessCount, 1)
 }
 
 // LifeSpan returns this item's expiration duration.
@@ -69,9 +68,7 @@ func (item *CacheItem) LifeSpan() time.Duration {
 
 // AccessedOn returns when this item was last accessed.
 func (item *CacheItem) AccessedOn() time.Time {
-	item.RLock()
-	defer item.RUnlock()
-	return item.accessedOn
+	return time.Unix(0, atomic.LoadInt64(&item.accessedOn))
 }
 
 // CreatedOn returns when this item was added to the cache.
@@ -82,9 +79,7 @@ func (item *CacheItem) CreatedOn() time.Time {
 
 // AccessCount returns how often this item has been accessed.
 func (item *CacheItem) AccessCount() int64 {
-	item.RLock()
-	defer item.RUnlock()
-	return item.accessCount
+	return atomic.LoadInt64(&item.accessCount)
 }
 
 // Key returns the key of this cached item.

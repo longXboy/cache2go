@@ -139,12 +139,8 @@ func (table *CacheTable) expirationCheck() {
 	now := time.Now()
 	smallestDuration := 0 * time.Second
 	for key, item := range table.items {
-		// Cache values so we don't keep blocking the mutex.
-		item.RLock()
 		lifeSpan := item.lifeSpan
-		accessedOn := item.accessedOn
-		item.RUnlock()
-
+		accessedOn := item.AccessedOn()
 		if lifeSpan == 0 {
 			continue
 		}
