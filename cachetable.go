@@ -11,6 +11,7 @@ import (
 	"log"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -136,28 +137,21 @@ func (table *CacheTable) expirationCheck() {
 
 	// To be more accurate with timers, we would need to update 'now' on every
 	// loop iteration. Not sure it's really efficient though.
-	now := time.Now()
+	now := time.Now().UnixNano()
 	smallestDuration := 0 * time.Second
 	for key, item := range table.items {
 		lifeSpan := item.lifeSpan
-		accessedOn := item.AccessedOn()
+		accessedOn := atomic.LoadInt64(&item.accessedOn)
 		if lifeSpan == 0 {
 			continue
 		}
-		if now.Sub(accessedOn) >= lifeSpan {
+		if time.Duration(now-accessedOn) >= lifeSpan {
 			// Item has excessed its lifespan.
 			table.deleteInternal(key)
 		} else {
-			// Find the item chronologically closest to its end-of-lifespan.
-			if smallestDuration == 0 || lifeSpan-now.Sub(accessedOn) < smallestDuration {
-				smallestDuration = lifeSpan - now.Sub(accessedOn)
-				if smallestDuration < time.Millisecond*100 {
-					smallestDuration = time.Millisecond * 100
-				}
-			}
+			smallestDuration = time.Millisecond * 200
 		}
 	}
-
 	// Setup the interval for the next cleanup run.
 	table.cleanupInterval = smallestDuration
 	if smallestDuration > 0 {

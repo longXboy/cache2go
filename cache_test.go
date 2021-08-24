@@ -493,7 +493,7 @@ func Test1s(t *testing.T) {
 	if item == nil {
 		t.Error("v is not null")
 	}
-	time.Sleep(time.Millisecond * 700)
+	time.Sleep(time.Millisecond * 830)
 
 	item, err = table.Value("1")
 	if err == nil || item != nil {
